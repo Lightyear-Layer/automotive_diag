@@ -7,6 +7,7 @@ python_test!(uds, ScalingType, Bcd, Ascii);
 /// Scaling high nibble, representing the type of data without its size. The size is given by the low nibble.
 #[repr(u8)]
 #[derive(strum::FromRepr, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "bin-proto", derive(bin_proto::BitEncode, bin_proto::BitDecode), bin_proto(discriminant_type = u8))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[cfg_attr(feature = "display", derive(displaydoc::Display))]
 #[cfg_attr(feature = "iter", derive(strum::EnumIter))]
@@ -96,6 +97,30 @@ impl TryFrom<u8> for Scaling {
             }
         }
         Ok(Self { typ, size })
+    }
+}
+
+#[cfg(feature = "bin-proto")]
+impl<Ctx> bin_proto::BitEncode<Ctx> for Scaling {
+    fn encode<W, E>(&self, write: &mut W, ctx: &mut Ctx, (): ()) -> bin_proto::Result<()>
+    where
+        W: bin_proto::BitWrite,
+        E: bin_proto::Endianness,
+    {
+        <u8 as bin_proto::BitEncode<_, _>>::encode::<_, E>(&(*self).into(), write, ctx, ())
+    }
+}
+
+#[cfg(feature = "bin-proto")]
+impl<Ctx> bin_proto::BitDecode<Ctx> for Scaling {
+    fn decode<R, E>(read: &mut R, ctx: &mut Ctx, (): ()) -> bin_proto::Result<Self>
+    where
+        R: bin_proto::BitRead,
+        E: bin_proto::Endianness,
+    {
+        <u8 as bin_proto::BitDecode<_, _>>::decode::<_, E>(read, ctx, ())?
+            .try_into()
+            .map_err(bin_proto::Error::Other)
     }
 }
 

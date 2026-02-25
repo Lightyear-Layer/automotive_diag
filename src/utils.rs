@@ -39,6 +39,38 @@ impl<T: Into<u8>> From<ByteWrapper<T>> for u8 {
     }
 }
 
+#[cfg(feature = "bin-proto")]
+impl<Ctx, T> bin_proto::BitEncode<Ctx> for ByteWrapper<T>
+where
+    T: Into<u8> + Copy,
+{
+    fn encode<W, E>(&self, write: &mut W, ctx: &mut Ctx, (): ()) -> bin_proto::Result<()>
+    where
+        W: bin_proto::BitWrite,
+        E: bin_proto::Endianness,
+    {
+        <u8 as bin_proto::BitEncode<_, _>>::encode::<_, E>(&(*self).into(), write, ctx, ())
+    }
+}
+
+#[cfg(feature = "bin-proto")]
+impl<Ctx, T> bin_proto::BitDecode<Ctx> for ByteWrapper<T>
+where
+    u8: TryInto<T>,
+{
+    fn decode<R, E>(read: &mut R, ctx: &mut Ctx, (): ()) -> bin_proto::Result<Self>
+    where
+        R: bin_proto::BitRead,
+        E: bin_proto::Endianness,
+    {
+        let byte = <u8 as bin_proto::BitDecode<_, _>>::decode::<_, E>(read, ctx, ())?;
+        Ok(match byte.try_into() {
+            Ok(v) => Self::Standard(v),
+            Err(_) => Self::Extended(byte),
+        })
+    }
+}
+
 /// For a byte enum, generate `TryFrom<u8> -> $enum_name`, `From<$enum_name> -> u8`, and `ByteWrapper` alias with conversions
 macro_rules! enum_wrapper {
     ($ns:tt, $enum_name:tt, $enum_wrapper:tt) => {

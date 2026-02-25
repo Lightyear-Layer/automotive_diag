@@ -9,6 +9,7 @@ python_test!(doip, ActivationType, Default, WwhObd);
 /// scenarios.
 #[repr(u8)]
 #[derive(strum::FromRepr, Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "bin-proto", derive(bin_proto::BitEncode, bin_proto::BitDecode), bin_proto(discriminant_type = u8))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[cfg_attr(feature = "display", derive(displaydoc::Display))]
 #[cfg_attr(feature = "iter", derive(strum::EnumIter))]
