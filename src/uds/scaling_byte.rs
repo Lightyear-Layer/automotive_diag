@@ -103,26 +103,30 @@ impl TryFrom<u8> for Scaling {
 }
 
 #[cfg(feature = "bin-proto")]
-impl<Ctx> bin_proto::BitEncode<Ctx> for Scaling {
-    fn encode<W, E>(&self, write: &mut W, ctx: &mut Ctx, (): ()) -> bin_proto::Result<()>
+impl<E, Ctx> bin_proto::BitEncode<E, Ctx> for Scaling
+where
+    E: bin_proto::Endianness,
+{
+    fn encode<W>(&self, write: &mut W, ctx: &mut Ctx, (): ()) -> bin_proto::Result<()>
     where
-        W: bin_proto::BitWrite,
-        E: bin_proto::Endianness,
+        W: bin_proto::BitWrite + ?Sized,
     {
-        <u8 as bin_proto::BitEncode<_, _>>::encode::<_, E>(&(*self).into(), write, ctx, ())
+        <u8 as bin_proto::BitEncode<E, _, _>>::encode(&(*self).into(), write, ctx, ())
     }
 }
 
 #[cfg(feature = "bin-proto")]
-impl<Ctx> bin_proto::BitDecode<Ctx> for Scaling {
-    fn decode<R, E>(read: &mut R, ctx: &mut Ctx, (): ()) -> bin_proto::Result<Self>
+impl<E, Ctx> bin_proto::BitDecode<E, Ctx> for Scaling
+where
+    E: bin_proto::Endianness,
+{
+    fn decode<R>(read: &mut R, ctx: &mut Ctx, (): ()) -> bin_proto::Result<Self>
     where
-        R: bin_proto::BitRead,
-        E: bin_proto::Endianness,
+        R: bin_proto::BitRead + ?Sized,
     {
-        <u8 as bin_proto::BitDecode<_, _>>::decode::<_, E>(read, ctx, ())?
+        <u8 as bin_proto::BitDecode<E, _, _>>::decode(read, ctx, ())?
             .try_into()
-            .map_err(bin_proto::Error::Other)
+            .map_err(bin_proto::Error::msg)
     }
 }
 
@@ -147,9 +151,8 @@ mod tests {
 
         assert_eq!(
             1,
-            bin_proto::BitCodec::encode_bytes_buf(
+            bin_proto::BitEncodeExt::encode_bytes_buf::<bin_proto::BigEndian>(
                 &Scaling::new(SignedNumeric, 4).unwrap(),
-                bin_proto::BigEndian,
                 &mut buf
             )
             .unwrap()
@@ -158,9 +161,8 @@ mod tests {
 
         assert_eq!(
             1,
-            bin_proto::BitCodec::encode_bytes_buf(
+            bin_proto::BitEncodeExt::encode_bytes_buf::<bin_proto::BigEndian>(
                 &Scaling::new(SignedNumeric, 1).unwrap(),
-                bin_proto::BigEndian,
                 &mut buf
             )
             .unwrap()
@@ -173,18 +175,18 @@ mod tests {
     fn test_scaling_byte_decode() {
         assert_eq!(
             Scaling::new(SignedNumeric, 4).unwrap(),
-            bin_proto::BitCodec::decode_all_bytes(&[0x14], bin_proto::BigEndian).unwrap()
+            bin_proto::BitDecodeExt::decode_all_bytes::<bin_proto::BigEndian>(&[0x14]).unwrap()
         );
         assert_eq!(
             Scaling::new(SignedNumeric, 1).unwrap(),
-            bin_proto::BitCodec::decode_all_bytes(&[0x11], bin_proto::BigEndian).unwrap()
+            bin_proto::BitDecodeExt::decode_all_bytes::<bin_proto::BigEndian>(&[0x11]).unwrap()
         );
         assert!(
-            <Scaling as bin_proto::BitCodec>::decode_all_bytes(&[0x10], bin_proto::BigEndian)
+            <Scaling as bin_proto::BitDecodeExt>::decode_all_bytes::<bin_proto::BigEndian>(&[0x10])
                 .is_err()
         );
         assert!(
-            <Scaling as bin_proto::BitCodec>::decode_all_bytes(&[0x41], bin_proto::BigEndian)
+            <Scaling as bin_proto::BitDecodeExt>::decode_all_bytes::<bin_proto::BigEndian>(&[0x41])
                 .is_err()
         );
     }

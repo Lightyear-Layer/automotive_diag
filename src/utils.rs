@@ -40,30 +40,30 @@ impl<T: Into<u8>> From<ByteWrapper<T>> for u8 {
 }
 
 #[cfg(feature = "bin-proto")]
-impl<Ctx, T> bin_proto::BitEncode<Ctx> for ByteWrapper<T>
+impl<E, Ctx, T> bin_proto::BitEncode<E, Ctx> for ByteWrapper<T>
 where
+    E: bin_proto::Endianness,
     T: Into<u8> + Copy,
 {
-    fn encode<W, E>(&self, write: &mut W, ctx: &mut Ctx, (): ()) -> bin_proto::Result<()>
+    fn encode<W>(&self, write: &mut W, ctx: &mut Ctx, (): ()) -> bin_proto::Result<()>
     where
-        W: bin_proto::BitWrite,
-        E: bin_proto::Endianness,
+        W: bin_proto::BitWrite + ?Sized,
     {
-        <u8 as bin_proto::BitEncode<_, _>>::encode::<_, E>(&(*self).into(), write, ctx, ())
+        <u8 as bin_proto::BitEncode<E, _, _>>::encode(&(*self).into(), write, ctx, ())
     }
 }
 
 #[cfg(feature = "bin-proto")]
-impl<Ctx, T> bin_proto::BitDecode<Ctx> for ByteWrapper<T>
+impl<E, Ctx, T> bin_proto::BitDecode<E, Ctx> for ByteWrapper<T>
 where
+    E: bin_proto::Endianness,
     u8: TryInto<T>,
 {
-    fn decode<R, E>(read: &mut R, ctx: &mut Ctx, (): ()) -> bin_proto::Result<Self>
+    fn decode<R>(read: &mut R, ctx: &mut Ctx, (): ()) -> bin_proto::Result<Self>
     where
-        R: bin_proto::BitRead,
-        E: bin_proto::Endianness,
+        R: bin_proto::BitRead + ?Sized,
     {
-        let byte = <u8 as bin_proto::BitDecode<_, _>>::decode::<_, E>(read, ctx, ())?;
+        let byte = <u8 as bin_proto::BitDecode<E, _, _>>::decode(read, ctx, ())?;
         Ok(match byte.try_into() {
             Ok(v) => Self::Standard(v),
             Err(_) => Self::Extended(byte),
@@ -121,7 +121,7 @@ macro_rules! enum_impls {
             #[test]
             #[cfg(feature = "iter")]
             fn test_iter() {
-                use ::strum::IntoEnumIterator as _;
+                use strum::IntoEnumIterator as _;
 
                 assert_ne!(0, $crate::$ns::$enum_name::iter().count());
                 for value in $crate::$ns::$enum_name::iter() {
@@ -247,9 +247,8 @@ macro_rules! bin_proto_wrapper_test {
                     let mut buf = [0; 1];
                     assert_eq!(
                         1,
-                        bin_proto::BitCodec::encode_bytes_buf(
+                        bin_proto::BitEncodeExt::encode_bytes_buf::<bin_proto::BigEndian>(
                             &$crate::$ns::$enum_wrapper::from(byte),
-                            bin_proto::BigEndian,
                             &mut buf,
                         )
                         .unwrap()
@@ -263,7 +262,7 @@ macro_rules! bin_proto_wrapper_test {
                 for byte in 0x00u8..=0xFF {
                     assert_eq!(
                         $crate::$ns::$enum_wrapper::from(byte),
-                        bin_proto::BitCodec::decode_all_bytes(&[byte], bin_proto::BigEndian)
+                        bin_proto::BitDecodeExt::decode_all_bytes::<bin_proto::BigEndian>(&[byte])
                             .unwrap()
                     );
                 }
